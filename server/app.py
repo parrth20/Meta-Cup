@@ -25,6 +25,16 @@ app = FastAPI(
 env = RunbookOpsEnvironment()
 
 
+@app.get("/")
+def root() -> dict[str, object]:
+    return {
+        "name": "RunbookOps",
+        "status": "ok",
+        "docs": "/docs",
+        "health": "/health",
+    }
+
+
 @app.get("/health")
 def health() -> dict[str, object]:
     return {
