@@ -268,13 +268,13 @@ runbookops/
 
 
 
-- [ ] All 15 scenarios load (`5 easy / 5 medium / 5 hard`).
-- [ ] `python3 -m pytest` passes.
-- [ ] `scripts/smoke_test.py` resolves a scenario and returns a valid grade.
-- [ ] `/health`, `/reset`, `/step`, `/state`, `/grade` work from `/docs`.
-- [ ] `inference.py` runs with required env vars and writes score summary JSON.
-- [ ] Docker image builds and serves `/health`.
-- [ ] `openenv.yaml` and implementation behavior are aligned.
+- [x] All 15 scenarios load (`5 easy / 5 medium / 5 hard`).
+- [x] `python3 -m pytest` passes.
+- [x] `scripts/smoke_test.py` resolves a scenario and returns a valid grade.
+- [x] `/health`, `/reset`, `/step`, `/state`, `/grade` work from `/docs`.
+- [x] `inference.py` runs with required env vars and writes score summary JSON.
+- [x] Docker image builds and serves `/health`.
+- [x] `openenv.yaml` and implementation behavior are aligned.
 
 ## Limitations
 
