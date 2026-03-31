@@ -1,13 +1,3 @@
----
-title: RunbookOps
-emoji: "🛠️"
-colorFrom: blue
-colorTo: green
-sdk: docker
-app_port: 7860
-pinned: false
----
-
 # RunbookOps
 
 RunbookOps is a deterministic OpenEnv-style environment for incident triage and runbook-driven resolution in a fictional SaaS company. Each episode simulates a production incident where an agent must gather evidence, classify severity, route ownership, identify root cause, choose mitigation, and close safely.
