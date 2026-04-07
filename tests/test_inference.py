@@ -86,3 +86,10 @@ def test_fallback_prefers_more_evidence_before_resolution_when_available() -> No
     )
     action = _fallback_action(observation)
     assert action.action_type == ActionType.INSPECT_ALERT
+
+
+def test_default_model_name_is_present_for_validator_safety() -> None:
+    import inference
+
+    assert inference.MODEL_NAME
+    assert isinstance(inference.MODEL_NAME, str)

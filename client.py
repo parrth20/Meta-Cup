@@ -5,6 +5,7 @@ from typing import Any, Optional
 import requests
 
 from models import Action, GraderResult, InternalStateSnapshot, Observation, ScenarioSummary, StepResult
+from server.environment import RunbookOpsEnvironment
 
 
 class RunbookOpsClient:
@@ -69,3 +70,42 @@ class RunbookOpsClient:
         payload = {"scenario_id": scenario_id} if scenario_id else None
         data = self._request("POST", "/grade", payload)
         return GraderResult.model_validate(data)
+
+
+class LocalRunbookOpsClient:
+    """In-process client used when no HTTP endpoint is configured."""
+
+    def __init__(self, scenarios_dir: Optional[str] = None) -> None:
+        self._env = RunbookOpsEnvironment(scenarios_dir=scenarios_dir)
+
+    def health(self) -> dict[str, Any]:
+        return {
+            "status": "ok",
+            "environment": "RunbookOps",
+            "scenarios_loaded": len(self._env.scenarios),
+            "transport": "local",
+        }
+
+    def reset(self, scenario_id: Optional[str] = None, difficulty: Optional[str] = None) -> Observation:
+        return self._env.reset(scenario_id=scenario_id, difficulty=difficulty)
+
+    def step(self, action: Action | dict[str, Any]) -> StepResult:
+        payload = action if isinstance(action, Action) else Action.model_validate(action)
+        return self._env.step(payload)
+
+    def state(self) -> InternalStateSnapshot:
+        return self._env.state()
+
+    def tasks(self) -> dict[str, dict[str, Any]]:
+        return self._env.list_tasks()
+
+    def scenarios(self) -> list[ScenarioSummary]:
+        return self._env.list_scenarios()
+
+    def grade(self, scenario_id: Optional[str] = None) -> GraderResult:
+        snapshot = self._env.state()
+        if scenario_id and snapshot.scenario_id != scenario_id:
+            raise RuntimeError(
+                "Active scenario does not match scenario_id in request. Call reset() first."
+            )
+        return self._env.grade_current_episode()

@@ -218,6 +218,12 @@ Run:
 python3 inference.py
 ```
 
+Validator-safe behavior:
+
+- If `RUNBOOKOPS_BASE_URL` is unset or unreachable, `inference.py` falls back to the local in-process environment.
+- If `HF_TOKEN` or other API credentials are missing, `inference.py` falls back to a deterministic planner-only baseline instead of exiting with a non-zero status.
+- When credentials are present, the script initializes the OpenAI client and records `inference_mode: "openai_client"` in the output JSON.
+
 Round 1 recommended run (saves reproducible artifact):
 
 ```bash

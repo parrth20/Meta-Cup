@@ -13,13 +13,16 @@ from typing import Any, Optional
 
 from openai import OpenAI
 
-from client import RunbookOpsClient
+from client import LocalRunbookOpsClient, RunbookOpsClient
 from models import Action, ActionType, Observation
 
-API_BASE_URL = os.getenv("API_BASE_URL", "https://router.huggingface.co/v1")
-MODEL_NAME = os.getenv("MODEL_NAME")
+DEFAULT_API_BASE_URL = "https://router.huggingface.co/v1"
+DEFAULT_MODEL_NAME = "meta-llama/Llama-3.1-8B-Instruct"
+
+API_BASE_URL = os.getenv("API_BASE_URL", DEFAULT_API_BASE_URL)
+MODEL_NAME = os.getenv("MODEL_NAME", DEFAULT_MODEL_NAME)
 API_KEY = os.getenv("HF_TOKEN") or os.getenv("API_KEY") or os.getenv("OPENAI_API_KEY")
-ENV_BASE_URL = os.getenv("RUNBOOKOPS_BASE_URL", "http://localhost:8000")
+ENV_BASE_URL = os.getenv("RUNBOOKOPS_BASE_URL")
 MAX_STEPS = int(os.getenv("MAX_STEPS", "12"))
 TEMPERATURE = float(os.getenv("TEMPERATURE", "0.0"))
 MAX_TOKENS = int(os.getenv("MAX_TOKENS", "220"))
@@ -785,8 +788,11 @@ def _build_user_prompt(observation: Observation) -> str:
     return "\n".join(prompt_lines)
 
 
-def _choose_action(model: OpenAI, observation: Observation) -> Action:
+def _choose_action(model: Optional[OpenAI], observation: Observation) -> Action:
     planned_action = _planned_action(observation)
+    if model is None:
+        return planned_action
+
     user_prompt = _build_user_prompt(observation)
 
     try:
@@ -820,7 +826,25 @@ def _choose_action(model: OpenAI, observation: Observation) -> Action:
     return planned_action
 
 
-def run_episode(client: RunbookOpsClient, model: OpenAI, scenario_id: str) -> dict[str, Any]:
+def _resolve_client() -> tuple[RunbookOpsClient | LocalRunbookOpsClient, str]:
+    if ENV_BASE_URL:
+        remote_client = RunbookOpsClient(base_url=ENV_BASE_URL)
+        try:
+            remote_client.health()
+            return remote_client, ENV_BASE_URL
+        except Exception as exc:
+            print(
+                f"Warning: failed to reach RUNBOOKOPS_BASE_URL={ENV_BASE_URL!r} "
+                f"({exc}). Falling back to local in-process environment."
+            )
+    return LocalRunbookOpsClient(), "local"
+
+
+def run_episode(
+    client: RunbookOpsClient | LocalRunbookOpsClient,
+    model: Optional[OpenAI],
+    scenario_id: str,
+) -> dict[str, Any]:
     observation = client.reset(scenario_id=scenario_id)
 
     for _ in range(MAX_STEPS):
@@ -861,16 +885,30 @@ def _print_table(headers: list[str], rows: list[list[str]]) -> None:
 
 
 def main() -> None:
-    if not MODEL_NAME:
-        raise SystemExit("MODEL_NAME is required.")
-    if not API_KEY:
-        raise SystemExit("HF_TOKEN or API_KEY or OPENAI_API_KEY is required.")
-
-    client = RunbookOpsClient(base_url=ENV_BASE_URL)
+    client, resolved_env_base_url = _resolve_client()
     health = client.health()
     print(f"Environment status: {health}")
 
-    model = OpenAI(api_key=API_KEY, base_url=API_BASE_URL)
+    model: Optional[OpenAI] = None
+    inference_mode = "planner_only"
+    if API_KEY:
+        try:
+            model = OpenAI(api_key=API_KEY, base_url=API_BASE_URL)
+            inference_mode = "openai_client"
+            print(
+                "Inference mode: openai_client "
+                f"(model={MODEL_NAME}, api_base_url={API_BASE_URL})"
+            )
+        except Exception as exc:
+            print(
+                f"Warning: failed to initialize OpenAI client ({exc}). "
+                "Continuing with deterministic planner-only baseline."
+            )
+    else:
+        print(
+            "Warning: no HF_TOKEN/API_KEY/OPENAI_API_KEY detected. "
+            f"Continuing with deterministic planner-only baseline using default model label {MODEL_NAME}."
+        )
 
     scenarios = sorted(
         client.scenarios(),
@@ -933,7 +971,8 @@ def main() -> None:
         "timestamp_utc": datetime.now(timezone.utc).isoformat(),
         "model_name": MODEL_NAME,
         "api_base_url": API_BASE_URL,
-        "environment_base_url": ENV_BASE_URL,
+        "environment_base_url": resolved_env_base_url,
+        "inference_mode": inference_mode,
         "max_steps": MAX_STEPS,
         "results": episode_results,
         "aggregates": {
