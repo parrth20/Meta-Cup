@@ -126,12 +126,12 @@ def test_inference_stdout_uses_structured_markers() -> None:
     )
 
     lines = [line for line in completed.stdout.splitlines() if line.strip()]
-    assert lines[0].startswith("START ")
-    assert lines[-1].startswith("END ")
-    step_lines = [line for line in lines if line.startswith("STEP ")]
-    assert len(step_lines) == 15
+    start_lines = [line for line in lines if line.startswith("[START] ")]
+    step_lines = [line for line in lines if line.startswith("[STEP] ")]
+    end_lines = [line for line in lines if line.startswith("[END] ")]
 
-    start_payload = json.loads(lines[0].split(" ", 1)[1])
-    end_payload = json.loads(lines[-1].split(" ", 1)[1])
-    assert start_payload["model_name"]
-    assert end_payload["scenario_count"] == 15
+    assert len(start_lines) == 15
+    assert len(end_lines) == 15
+    assert len(step_lines) >= 15
+    assert "task=easy_auth_token_expiry" in start_lines[0]
+    assert "score=" in end_lines[-1]

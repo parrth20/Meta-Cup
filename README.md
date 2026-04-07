@@ -224,7 +224,7 @@ Validator-safe behavior:
 - If `RUNBOOKOPS_BASE_URL` is unset or unreachable, `inference.py` falls back to the local in-process environment.
 - If `HF_TOKEN` or other API credentials are missing, `inference.py` falls back to a deterministic planner-only baseline instead of exiting with a non-zero status.
 - When credentials are present, the script initializes the OpenAI client and records `inference_mode: "openai_client"` in the output JSON.
-- Stdout uses strict structured records with `START`, `STEP`, and `END` prefixes for validator-friendly parsing.
+- Stdout uses strict bracketed structured records with `[START]`, `[STEP]`, and `[END]` prefixes for validator-friendly parsing.
 
 Round 1 recommended run (saves reproducible artifact):
 
@@ -240,9 +240,9 @@ python3 inference.py | tee artifacts/inference_live_stdout.txt
 
 Output:
 
-- `START {...}` line with run metadata
-- one `STEP {...}` line per scenario
-- `END {...}` line with aggregates and output path
+- one `[START] task=...` line per scenario
+- multiple `[STEP] task=... step=... reward=...` lines across each episode
+- one `[END] task=... score=... steps=...` line per scenario
 - JSON summary file (default: `baseline_results.json`)
 
 ## Docker

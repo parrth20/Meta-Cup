@@ -4,6 +4,7 @@ import ast
 import json
 import os
 import re
+import sys
 import textwrap
 from collections import defaultdict
 from datetime import datetime, timezone
@@ -837,7 +838,9 @@ def _resolve_client() -> tuple[RunbookOpsClient | LocalRunbookOpsClient, str]:
         except Exception as exc:
             print(
                 f"Warning: failed to reach RUNBOOKOPS_BASE_URL={ENV_BASE_URL!r} "
-                f"({exc}). Falling back to local in-process environment."
+                f"({exc}). Falling back to local in-process environment.",
+                file=sys.stderr,
+                flush=True,
             )
     return LocalRunbookOpsClient(), "local"
 
@@ -848,12 +851,26 @@ def run_episode(
     scenario_id: str,
 ) -> dict[str, Any]:
     observation = client.reset(scenario_id=scenario_id)
+    step_trace: list[dict[str, Any]] = []
 
-    for _ in range(MAX_STEPS):
+    for step_index in range(1, MAX_STEPS + 1):
         if observation.done:
             break
         action = _choose_action(model, observation)
         step_result = client.step(action)
+        step_reward = (
+            float(step_result.reward.reward)
+            if hasattr(step_result.reward, "reward")
+            else float(step_result.reward)
+        )
+        step_trace.append(
+            {
+                "step": step_index,
+                "action_type": action.action_type.value,
+                "reward": step_reward,
+                "done": bool(step_result.done),
+            }
+        )
         observation = step_result.observation
         if step_result.done:
             break
@@ -869,6 +886,7 @@ def run_episode(
         "steps_taken": state.steps_taken,
         "total_reward": state.total_reward,
         "terminal_reason": state.terminal_reason,
+        "step_trace": step_trace,
     }
 
 
@@ -886,8 +904,9 @@ def _print_table(headers: list[str], rows: list[list[str]]) -> None:
         print(" | ".join(cell.ljust(widths[index]) for index, cell in enumerate(row)))
 
 
-def _emit_event(event_type: str, payload: dict[str, Any]) -> None:
-    print(f"{event_type} {json.dumps(payload, sort_keys=True)}")
+def _emit_structured_event(event_type: str, fields: list[tuple[str, Any]]) -> None:
+    serialized = " ".join(f"{key}={value}" for key, value in fields)
+    print(f"[{event_type}] {serialized}", flush=True)
 
 
 def main() -> None:
@@ -917,36 +936,30 @@ def main() -> None:
     )
     episode_results: list[dict[str, Any]] = []
 
-    _emit_event(
-        "START",
-        {
-            "api_base_url": API_BASE_URL,
-            "environment_base_url": resolved_env_base_url,
-            "environment_health": health,
-            "hf_token_present": bool(HF_TOKEN),
-            "inference_mode": inference_mode,
-            "local_image_name": LOCAL_IMAGE_NAME,
-            "max_steps": MAX_STEPS,
-            "model_name": MODEL_NAME,
-            "scenario_count": len(scenarios),
-            "warnings": warnings,
-        },
-    )
-
     for scenario in scenarios:
+        _emit_structured_event(
+            "START",
+            [
+                ("task", scenario.scenario_id),
+            ],
+        )
         result = run_episode(client=client, model=model, scenario_id=scenario.scenario_id)
         episode_results.append(result)
-        _emit_event(
-            "STEP",
-            {
-                "components": result["components"],
-                "difficulty": result["difficulty"],
-                "scenario_id": result["scenario_id"],
-                "score": round(float(result["score"]), 4),
-                "steps_taken": result["steps_taken"],
-                "terminal_reason": result["terminal_reason"],
-                "total_reward": round(float(result["total_reward"]), 4),
-            },
+        for trace in result["step_trace"]:
+            _emit_structured_event(
+                "STEP",
+                [
+                    ("step", trace["step"]),
+                    ("reward", f"{float(trace['reward']):.4f}"),
+                ],
+            )
+        _emit_structured_event(
+            "END",
+            [
+                ("task", result["scenario_id"]),
+                ("score", f"{float(result['score']):.4f}"),
+                ("steps", result["steps_taken"]),
+            ],
         )
 
     by_difficulty: dict[str, list[float]] = defaultdict(list)
@@ -965,7 +978,11 @@ def main() -> None:
         "api_base_url": API_BASE_URL,
         "environment_base_url": resolved_env_base_url,
         "inference_mode": inference_mode,
+        "environment_health": health,
+        "hf_token_present": bool(HF_TOKEN),
+        "local_image_name": LOCAL_IMAGE_NAME,
         "max_steps": MAX_STEPS,
+        "warnings": warnings,
         "results": episode_results,
         "aggregates": {
             difficulty: {
@@ -981,21 +998,6 @@ def main() -> None:
 
     output_path = Path(RESULT_PATH)
     output_path.write_text(json.dumps(summary, indent=2) + "\n", encoding="utf-8")
-    _emit_event(
-        "END",
-        {
-            "aggregates": summary["aggregates"],
-            "api_base_url": API_BASE_URL,
-            "environment_base_url": resolved_env_base_url,
-            "hf_token_present": bool(HF_TOKEN),
-            "inference_mode": inference_mode,
-            "model_name": MODEL_NAME,
-            "overall_mean_score": round(overall, 4),
-            "result_path": str(output_path),
-            "scenario_count": len(episode_results),
-            "terminal_counts": dict(sorted(terminal_counts.items())),
-        },
-    )
 
 
 if __name__ == "__main__":
