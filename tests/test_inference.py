@@ -1,5 +1,11 @@
 from __future__ import annotations
 
+import json
+import os
+import subprocess
+import sys
+from pathlib import Path
+
 from inference import _fallback_action, _parse_json_action
 from models import ActionType, Difficulty, EvidenceType, Observation, PublicEvidence
 
@@ -93,3 +99,39 @@ def test_default_model_name_is_present_for_validator_safety() -> None:
 
     assert inference.MODEL_NAME
     assert isinstance(inference.MODEL_NAME, str)
+
+
+def test_hf_token_symbol_exists_without_default_requirement() -> None:
+    import inference
+
+    assert hasattr(inference, "HF_TOKEN")
+
+
+def test_inference_stdout_uses_structured_markers() -> None:
+    root = Path(__file__).resolve().parents[1]
+    artifacts_dir = root / "artifacts"
+    artifacts_dir.mkdir(exist_ok=True)
+    env = os.environ.copy()
+    for key in ("MODEL_NAME", "HF_TOKEN", "API_KEY", "OPENAI_API_KEY", "RUNBOOKOPS_BASE_URL"):
+        env.pop(key, None)
+    env["RESULT_PATH"] = str(artifacts_dir / "test_validator_stdout.json")
+
+    completed = subprocess.run(
+        [sys.executable, "inference.py"],
+        cwd=root,
+        env=env,
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+
+    lines = [line for line in completed.stdout.splitlines() if line.strip()]
+    assert lines[0].startswith("START ")
+    assert lines[-1].startswith("END ")
+    step_lines = [line for line in lines if line.startswith("STEP ")]
+    assert len(step_lines) == 15
+
+    start_payload = json.loads(lines[0].split(" ", 1)[1])
+    end_payload = json.loads(lines[-1].split(" ", 1)[1])
+    assert start_payload["model_name"]
+    assert end_payload["scenario_count"] == 15

@@ -21,7 +21,9 @@ DEFAULT_MODEL_NAME = "meta-llama/Llama-3.1-8B-Instruct"
 
 API_BASE_URL = os.getenv("API_BASE_URL", DEFAULT_API_BASE_URL)
 MODEL_NAME = os.getenv("MODEL_NAME", DEFAULT_MODEL_NAME)
-API_KEY = os.getenv("HF_TOKEN") or os.getenv("API_KEY") or os.getenv("OPENAI_API_KEY")
+HF_TOKEN = os.getenv("HF_TOKEN")
+LOCAL_IMAGE_NAME = os.getenv("LOCAL_IMAGE_NAME")
+API_KEY = HF_TOKEN or os.getenv("API_KEY") or os.getenv("OPENAI_API_KEY")
 ENV_BASE_URL = os.getenv("RUNBOOKOPS_BASE_URL")
 MAX_STEPS = int(os.getenv("MAX_STEPS", "12"))
 TEMPERATURE = float(os.getenv("TEMPERATURE", "0.0"))
@@ -884,30 +886,29 @@ def _print_table(headers: list[str], rows: list[list[str]]) -> None:
         print(" | ".join(cell.ljust(widths[index]) for index, cell in enumerate(row)))
 
 
+def _emit_event(event_type: str, payload: dict[str, Any]) -> None:
+    print(f"{event_type} {json.dumps(payload, sort_keys=True)}")
+
+
 def main() -> None:
     client, resolved_env_base_url = _resolve_client()
     health = client.health()
-    print(f"Environment status: {health}")
 
     model: Optional[OpenAI] = None
     inference_mode = "planner_only"
+    warnings: list[str] = []
     if API_KEY:
         try:
             model = OpenAI(api_key=API_KEY, base_url=API_BASE_URL)
             inference_mode = "openai_client"
-            print(
-                "Inference mode: openai_client "
-                f"(model={MODEL_NAME}, api_base_url={API_BASE_URL})"
-            )
         except Exception as exc:
-            print(
-                f"Warning: failed to initialize OpenAI client ({exc}). "
-                "Continuing with deterministic planner-only baseline."
+            warnings.append(
+                "OpenAI client initialization failed; using deterministic planner-only baseline: "
+                f"{exc}"
             )
     else:
-        print(
-            "Warning: no HF_TOKEN/API_KEY/OPENAI_API_KEY detected. "
-            f"Continuing with deterministic planner-only baseline using default model label {MODEL_NAME}."
+        warnings.append(
+            "No HF_TOKEN/API_KEY/OPENAI_API_KEY detected; using deterministic planner-only baseline."
         )
 
     scenarios = sorted(
@@ -916,26 +917,37 @@ def main() -> None:
     )
     episode_results: list[dict[str, Any]] = []
 
+    _emit_event(
+        "START",
+        {
+            "api_base_url": API_BASE_URL,
+            "environment_base_url": resolved_env_base_url,
+            "environment_health": health,
+            "hf_token_present": bool(HF_TOKEN),
+            "inference_mode": inference_mode,
+            "local_image_name": LOCAL_IMAGE_NAME,
+            "max_steps": MAX_STEPS,
+            "model_name": MODEL_NAME,
+            "scenario_count": len(scenarios),
+            "warnings": warnings,
+        },
+    )
+
     for scenario in scenarios:
         result = run_episode(client=client, model=model, scenario_id=scenario.scenario_id)
         episode_results.append(result)
-    scenario_rows = [
-        [
-            row["difficulty"],
-            row["scenario_id"],
-            f"{float(row['score']):.4f}",
-            str(row["steps_taken"]),
-            f"{float(row['total_reward']):.4f}",
-            str(row["terminal_reason"] or "none"),
-        ]
-        for row in episode_results
-    ]
-
-    print("\nPer-scenario results")
-    _print_table(
-        headers=["difficulty", "scenario_id", "score", "steps", "reward", "terminal_reason"],
-        rows=scenario_rows,
-    )
+        _emit_event(
+            "STEP",
+            {
+                "components": result["components"],
+                "difficulty": result["difficulty"],
+                "scenario_id": result["scenario_id"],
+                "score": round(float(result["score"]), 4),
+                "steps_taken": result["steps_taken"],
+                "terminal_reason": result["terminal_reason"],
+                "total_reward": round(float(result["total_reward"]), 4),
+            },
+        )
 
     by_difficulty: dict[str, list[float]] = defaultdict(list)
     for row in episode_results:
@@ -943,29 +955,9 @@ def main() -> None:
 
     overall = mean([row["score"] for row in episode_results]) if episode_results else 0.0
 
-    print("\nAggregate scores")
-    aggregate_rows: list[list[str]] = []
-    for difficulty in ["easy", "medium", "hard"]:
-        scores = by_difficulty.get(difficulty, [])
-        if scores:
-            aggregate_rows.append(
-                [
-                    difficulty,
-                    str(len(scores)),
-                    f"{min(scores):.4f}",
-                    f"{mean(scores):.4f}",
-                    f"{max(scores):.4f}",
-                ]
-            )
-    _print_table(headers=["difficulty", "count", "min", "mean", "max"], rows=aggregate_rows)
-    print(f"\nOverall mean score: {overall:.4f} across {len(episode_results)} scenarios")
-
     terminal_counts: dict[str, int] = defaultdict(int)
     for row in episode_results:
         terminal_counts[str(row.get("terminal_reason") or "none")] += 1
-    terminal_rows = [[reason, str(count)] for reason, count in sorted(terminal_counts.items())]
-    print("\nTerminal reasons")
-    _print_table(headers=["terminal_reason", "count"], rows=terminal_rows)
 
     summary = {
         "timestamp_utc": datetime.now(timezone.utc).isoformat(),
@@ -989,7 +981,21 @@ def main() -> None:
 
     output_path = Path(RESULT_PATH)
     output_path.write_text(json.dumps(summary, indent=2) + "\n", encoding="utf-8")
-    print(f"\nSaved summary: {output_path}")
+    _emit_event(
+        "END",
+        {
+            "aggregates": summary["aggregates"],
+            "api_base_url": API_BASE_URL,
+            "environment_base_url": resolved_env_base_url,
+            "hf_token_present": bool(HF_TOKEN),
+            "inference_mode": inference_mode,
+            "model_name": MODEL_NAME,
+            "overall_mean_score": round(overall, 4),
+            "result_path": str(output_path),
+            "scenario_count": len(episode_results),
+            "terminal_counts": dict(sorted(terminal_counts.items())),
+        },
+    )
 
 
 if __name__ == "__main__":
