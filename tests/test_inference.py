@@ -197,11 +197,43 @@ def test_written_summary_scores_stay_inside_open_interval() -> None:
     assert 0.0 < summary["overall_mean_score"] < 1.0
     for result in summary["results"]:
         assert 0.0 < float(result["score"]) < 1.0
-        assert all(0.0 < float(value) < 1.0 for value in result["components"].values())
     for aggregate in summary["aggregates"].values():
         assert 0.0 < float(aggregate["min_score"]) < 1.0
         assert 0.0 < float(aggregate["mean_score"]) < 1.0
         assert 0.0 < float(aggregate["max_score"]) < 1.0
+
+
+def test_written_summary_contains_only_score_like_numeric_fields() -> None:
+    root = Path(__file__).resolve().parents[1]
+    env = os.environ.copy()
+    for key in ("MODEL_NAME", "HF_TOKEN"):
+        env.pop(key, None)
+
+    subprocess.run(
+        [sys.executable, "inference.py"],
+        cwd=root,
+        env=env,
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+
+    summary = json.loads((root / "baseline_results.json").read_text())
+    numeric_fields: list[float] = []
+
+    def walk(obj: object) -> None:
+        if isinstance(obj, dict):
+            for value in obj.values():
+                walk(value)
+        elif isinstance(obj, list):
+            for value in obj:
+                walk(value)
+        elif isinstance(obj, (int, float)) and not isinstance(obj, bool):
+            numeric_fields.append(float(obj))
+
+    walk(summary)
+    assert numeric_fields
+    assert all(0.0 < value < 1.0 for value in numeric_fields)
 
 
 def test_planner_resolves_without_late_duplicate_inspects_on_hard_case() -> None:

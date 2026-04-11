@@ -935,9 +935,7 @@ def run_episode(
         "scenario_id": scenario_id,
         "difficulty": grade.difficulty.value,
         "score": grade.score,
-        "components": grade.components,
         "steps_taken": state.steps_taken,
-        "total_reward": state.total_reward,
         "terminal_reason": state.terminal_reason,
         "step_trace": step_trace,
         "success": state.terminal_reason == "resolved_safely",
@@ -1037,9 +1035,7 @@ def main() -> None:
                 "scenario_id": scenario.scenario_id,
                 "difficulty": scenario.difficulty.value,
                 "score": 0.0001,
-                "components": {},
                 "steps_taken": 0,
-                "total_reward": 0.0,
                 "terminal_reason": "episode_exception",
                 "step_trace": [],
                 "success": False,
@@ -1074,16 +1070,19 @@ def main() -> None:
         "timestamp_utc": datetime.now(timezone.utc).isoformat(),
         "model_name": MODEL_NAME,
         "api_base_url": API_BASE_URL,
-        "environment_base_url": resolved_env_base_url,
         "inference_mode": inference_mode,
-        "environment_health": health,
-        "hf_token_present": bool(HF_TOKEN),
-        "max_steps": MAX_STEPS,
         "warnings": warnings,
-        "results": episode_results,
+        "results": [
+            {
+                "scenario_id": row["scenario_id"],
+                "difficulty": row["difficulty"],
+                "score": public_score(float(row["score"])),
+                "terminal_reason": row["terminal_reason"],
+            }
+            for row in episode_results
+        ],
         "aggregates": {
             difficulty: {
-                "count": len(scores),
                 "min_score": public_score(min(scores)),
                 "mean_score": public_score(mean(scores)),
                 "max_score": public_score(max(scores)),
