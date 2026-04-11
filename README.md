@@ -5,13 +5,13 @@ colorFrom: blue
 colorTo: green
 sdk: docker
 app_port: 7860
-base_path: /docs
+base_path: /
 tags:
   - openenv
 pinned: false
 ---
 
-# runbookops-caseop
+# RunbookOps: CaseOps Benchmark
 
 RunbookOps is a deterministic OpenEnv-style benchmark for **operational case handling**. Each episode is a realistic service issue that affects customer access, orders, payments, messages, catalog freshness, or partner integrations. The agent must gather evidence, assess severity, route ownership, identify cause, choose a safe resolution, and close the case responsibly.
 

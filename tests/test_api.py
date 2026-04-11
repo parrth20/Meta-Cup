@@ -11,6 +11,22 @@ from server.environment import RunbookOpsEnvironment
 client = TestClient(app)
 
 
+def test_root_html_landing_page() -> None:
+    response = client.get("/")
+    assert response.status_code == 200
+    assert "text/html" in response.headers["content-type"]
+    assert "RunbookOps" in response.text
+    assert "CaseOps Benchmark" in response.text
+
+
+def test_root_json_payload_for_api_clients() -> None:
+    response = client.get("/", headers={"accept": "application/json"})
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["name"] == "RunbookOps"
+    assert payload["docs"] == "/docs"
+
+
 def test_health_endpoint() -> None:
     response = client.get("/health")
     assert response.status_code == 200
