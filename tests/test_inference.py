@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import importlib
 import os
 import re
 import subprocess
@@ -107,6 +108,20 @@ def test_hf_token_symbol_exists_without_default_requirement() -> None:
     import inference
 
     assert hasattr(inference, "HF_TOKEN")
+
+
+def test_openenv_env_url_alias_is_supported(monkeypatch) -> None:
+    import inference
+
+    monkeypatch.delenv("RUNBOOKOPS_BASE_URL", raising=False)
+    monkeypatch.setenv("OPENENV_ENV_URL", "https://example-openenv.test")
+    reloaded = importlib.reload(inference)
+    try:
+        assert reloaded.OPENENV_ENV_URL == "https://example-openenv.test"
+        assert reloaded.ENV_BASE_URL == "https://example-openenv.test"
+    finally:
+        monkeypatch.delenv("OPENENV_ENV_URL", raising=False)
+        importlib.reload(inference)
 
 
 def test_inference_stdout_uses_structured_markers() -> None:

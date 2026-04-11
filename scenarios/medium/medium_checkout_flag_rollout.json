@@ -1,9 +1,9 @@
 {
   "scenario_id": "medium_checkout_flag_rollout",
-  "title": "Checkout failures after fraud flag rollout",
+  "title": "Order completion failures after risk-policy rollout",
   "difficulty": "medium",
   "service": "checkout",
-  "incident_summary": "Successful checkout rate dropped sharply after a risk-control rollout window.",
+  "incident_summary": "Completed purchases dropped sharply after a stricter risk-control policy was expanded.",
   "alerts": [
     {
       "id": "mc1_alert_checkout_fail_rate",

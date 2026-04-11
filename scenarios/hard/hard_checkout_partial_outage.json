@@ -1,9 +1,9 @@
 {
   "scenario_id": "hard_checkout_partial_outage",
-  "title": "Checkout partial outage isolated to one AZ",
+  "title": "Order completion disruption isolated to one fulfillment zone",
   "difficulty": "hard",
   "service": "checkout",
-  "incident_summary": "Checkout 5xx appears intermittent and regional; false leads point toward global dependency instability.",
+  "incident_summary": "Checkout failures appear intermittent and regional, while several misleading signals suggest a wider dependency problem.",
   "alerts": [
     {
       "id": "hc1_alert_regional_5xx",

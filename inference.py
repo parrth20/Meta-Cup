@@ -25,7 +25,8 @@ MODEL_NAME = os.getenv("MODEL_NAME", DEFAULT_MODEL_NAME)
 HF_TOKEN = os.getenv("HF_TOKEN")
 LOCAL_IMAGE_NAME = os.getenv("LOCAL_IMAGE_NAME")
 API_KEY = HF_TOKEN or os.getenv("API_KEY") or os.getenv("OPENAI_API_KEY")
-ENV_BASE_URL = os.getenv("RUNBOOKOPS_BASE_URL")
+OPENENV_ENV_URL = os.getenv("OPENENV_ENV_URL")
+ENV_BASE_URL = os.getenv("RUNBOOKOPS_BASE_URL") or OPENENV_ENV_URL
 MAX_STEPS = int(os.getenv("MAX_STEPS", "12"))
 TEMPERATURE = float(os.getenv("TEMPERATURE", "0.0"))
 MAX_TOKENS = int(os.getenv("MAX_TOKENS", "220"))
@@ -895,7 +896,7 @@ def _resolve_client() -> tuple[RunbookOpsClient | LocalRunbookOpsClient, str]:
             return remote_client, ENV_BASE_URL
         except Exception as exc:
             print(
-                f"Warning: failed to reach RUNBOOKOPS_BASE_URL={ENV_BASE_URL!r} "
+                f"Warning: failed to reach configured environment URL {ENV_BASE_URL!r} "
                 f"({exc}). Falling back to local in-process environment.",
                 file=sys.stderr,
                 flush=True,
@@ -1088,6 +1089,7 @@ def main() -> None:
         "model_name": MODEL_NAME,
         "api_base_url": API_BASE_URL,
         "environment_base_url": resolved_env_base_url,
+        "openenv_env_url": OPENENV_ENV_URL,
         "inference_mode": inference_mode,
         "environment_health": health,
         "hf_token_present": bool(HF_TOKEN),

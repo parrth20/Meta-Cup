@@ -1,9 +1,9 @@
 {
   "scenario_id": "medium_email_provider_vs_config",
-  "title": "Email sends failing: provider outage or local config",
+  "title": "Message delivery case: provider outage or local credential issue",
   "difficulty": "medium",
   "service": "email",
-  "incident_summary": "Transactional email success dropped to 61%; two plausible causes appear in monitoring.",
+  "incident_summary": "Transactional delivery fell to 61%, and the evidence supports two plausible explanations.",
   "alerts": [
     {
       "id": "me1_alert_smtp_auth_fail",

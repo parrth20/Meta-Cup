@@ -1,9 +1,9 @@
 {
   "scenario_id": "easy_auth_token_expiry",
-  "title": "Auth tokens rejected after key expiry",
+  "title": "Account access failures after credential rollover",
   "difficulty": "easy",
   "service": "auth",
-  "incident_summary": "Login attempts are failing with 401 spikes after midnight key-rotation window.",
+  "incident_summary": "Customer sign-ins are being rejected shortly after a scheduled credential rollover window.",
   "alerts": [
     {
       "id": "ea1_alert_401_spike",

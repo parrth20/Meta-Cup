@@ -1,9 +1,9 @@
 {
   "scenario_id": "hard_auth_multi_signal_conflict",
-  "title": "Auth failures mimic attack but stem from clock skew",
+  "title": "Account access failures look malicious but trace back to time drift",
   "difficulty": "hard",
   "service": "auth",
-  "incident_summary": "Failed OAuth logins and nonce errors resemble credential attack, but service telemetry conflicts.",
+  "incident_summary": "Login failures and nonce mismatches resemble abuse, but the surrounding service evidence points elsewhere.",
   "alerts": [
     {
       "id": "ha1_alert_nonce_mismatch",

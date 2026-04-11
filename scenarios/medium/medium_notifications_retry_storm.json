@@ -1,9 +1,9 @@
 {
   "scenario_id": "medium_notifications_retry_storm",
-  "title": "Notification retry storm causes queue pressure",
+  "title": "Customer notification backlog from retry storm",
   "difficulty": "medium",
   "service": "notifications",
-  "incident_summary": "Push and SMS latency degrade while worker throughput spikes unexpectedly.",
+  "incident_summary": "Push and SMS delivery slow down while retry traffic surges and worker queues fill.",
   "alerts": [
     {
       "id": "mn1_alert_retry_qps",

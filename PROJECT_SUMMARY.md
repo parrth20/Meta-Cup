@@ -1,17 +1,18 @@
-# RunbookOps: Project Summary
+# RunbookOps: CaseOps Benchmark Summary
 
 ## One-Line Summary
 
-RunbookOps is a deterministic OpenEnv-style environment that evaluates whether an agent can perform realistic SaaS incident triage and runbook-based resolution safely.
+RunbookOps is a deterministic OpenEnv-style environment that evaluates whether an agent can handle realistic operational cases safely under partial information.
 
 ## Why It Matters
 
-Incident response is a high-value real-world agent task with concrete success criteria. RunbookOps provides structured evaluation beyond toy environments by testing evidence-driven reasoning, ownership routing, mitigation choice, and safe closure behavior.
+Operational case handling is a high-value real-world agent task with concrete success criteria. RunbookOps goes beyond toy environments by testing evidence-driven reasoning, ownership routing, mitigation choice, and safe closure behavior across customer-impact workflows.
 
 ## What Is Included
 
 - 15 fully synthetic, offline scenarios.
   - 5 easy, 5 medium, 5 hard.
+- Coverage across account access, order completion, payments, message delivery, catalog freshness, and partner integration cases.
 - Typed action/observation/state models (Pydantic).
 - Deterministic environment API:
   - `reset()`
@@ -30,12 +31,12 @@ Incident response is a high-value real-world agent task with concrete success cr
 1. Start API and open `/docs`.
 2. Call `POST /reset` with `easy_auth_token_expiry`.
 3. Call `POST /step` with one inspect action, then `GET /state`.
-4. Call `POST /grade` and verify score is in `[0, 1]`.
+4. Call `POST /grade` and verify score is strictly inside `(0, 1)`.
 5. Run `python3 -m pytest` for deterministic validation coverage.
 
 ## Judging Alignment
 
-- Real-world utility: incident triage and runbook operations.
+- Real-world utility: evidence-based operational case handling.
 - Task/grader quality: explicit objectives, deterministic grading, difficulty progression.
 - Environment design: stateful evidence unlocking, safety-aware transitions, reward shaping.
 - Spec-readiness: typed models, OpenEnv-style manifest, deployable API + Docker.

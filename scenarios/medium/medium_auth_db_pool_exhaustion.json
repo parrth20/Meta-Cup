@@ -1,9 +1,9 @@
 {
   "scenario_id": "medium_auth_db_pool_exhaustion",
-  "title": "Auth DB pool exhaustion after canary",
+  "title": "Account access case after staged release exhausts session capacity",
   "difficulty": "medium",
   "service": "auth",
-  "incident_summary": "Session refresh calls time out, and login reliability is collapsing across regions.",
+  "incident_summary": "Session refresh and sign-in reliability are collapsing after a staged release, with capacity saturation spreading across regions.",
   "alerts": [
     {
       "id": "ma1_alert_db_pool_saturation",

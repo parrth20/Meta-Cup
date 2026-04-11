@@ -1,9 +1,9 @@
 {
   "scenario_id": "hard_search_index_pipeline_failure",
-  "title": "Search index pipeline dropping updates after schema migration",
+  "title": "Catalog updates dropping after search schema change",
   "difficulty": "hard",
   "service": "search",
-  "incident_summary": "Search freshness degrades unevenly; indexing pipeline appears healthy at first glance.",
+  "incident_summary": "Catalog freshness degrades unevenly; the indexing pipeline looks healthy at first glance even though updates are being lost.",
   "alerts": [
     {
       "id": "hs1_alert_freshness_backlog",

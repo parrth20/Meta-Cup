@@ -1,9 +1,9 @@
 {
   "scenario_id": "easy_checkout_dependency_timeout",
-  "title": "Checkout timeout to deprecated inventory endpoint",
+  "title": "Order confirmation failures during catalog handoff",
   "difficulty": "easy",
   "service": "checkout",
-  "incident_summary": "Checkout conversion dropped as API latency climbed during cart confirmation.",
+  "incident_summary": "Order completion rate dropped as cart confirmation waits on an outdated catalog lock path.",
   "alerts": [
     {
       "id": "ec1_alert_checkout_timeout",

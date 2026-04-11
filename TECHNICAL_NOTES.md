@@ -37,6 +37,16 @@ Root cause and mitigation checks use deterministic normalization:
 
 This supports realistic paraphrases while avoiding LLM-as-judge variability.
 
+## Case Framing
+
+The public framing for RunbookOps is broader than pure infrastructure response.
+
+- episodes are presented as operational cases
+- evidence captures customer-impact workflows and service exceptions
+- the same deterministic engine supports account access, order, payment, messaging, catalog, and integration cases
+
+This keeps the benchmark easier to understand for non-specialist reviewers without changing the underlying mechanics.
+
 ## Reward Design
 
 Reward is dense-ish per step and intended for learning signals.
@@ -102,6 +112,7 @@ The baseline runner is intentionally robust under validator conditions:
 
 - `API_BASE_URL` and `MODEL_NAME` are read with defaults, matching the submission guide.
 - `HF_TOKEN` is read without a default, matching the submission guide.
+- `OPENENV_ENV_URL` is supported as an optional alias for the environment endpoint, but it is not part of the required submission contract.
 - The OpenAI Python client is used for all LLM-backed calls.
 - Stdout emits only the required single-line records:
   - `[START] task=... env=runbookops model=...`

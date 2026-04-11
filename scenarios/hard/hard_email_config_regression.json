@@ -1,9 +1,9 @@
 {
   "scenario_id": "hard_email_config_regression",
-  "title": "Email outage from signer config regression",
+  "title": "Message delivery collapse after signer configuration regression",
   "difficulty": "hard",
   "service": "email",
-  "incident_summary": "Transactional email delivery failed suddenly after config rollout; provider telemetry is noisy and misleading.",
+  "incident_summary": "Transactional delivery failed right after a configuration change, but external telemetry is noisy and misleading.",
   "alerts": [
     {
       "id": "he1_alert_delivery_drop",

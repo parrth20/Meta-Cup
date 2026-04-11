@@ -1,9 +1,9 @@
 {
   "scenario_id": "medium_payments_region_misroute",
-  "title": "EU payments misrouted to unsupported gateway",
+  "title": "Regional payment exceptions routed to the wrong settlement path",
   "difficulty": "medium",
   "service": "payments",
-  "incident_summary": "EU card declines spike while US traffic remains healthy, suggesting regional routing issue.",
+  "incident_summary": "European payment failures spike while other regions stay healthy, pointing to a routing exception.",
   "alerts": [
     {
       "id": "mp1_alert_eu_declines",

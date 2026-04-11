@@ -1,5 +1,4 @@
----
-title: RunbookOps
+title: RunbookOps - CaseOps Benchmark
 emoji: "🛠️"
 colorFrom: blue
 colorTo: green
@@ -13,7 +12,7 @@ pinned: false
 
 # RunbookOps
 
-RunbookOps is a deterministic OpenEnv-style environment for incident triage and runbook-driven resolution in a fictional SaaS company. Each episode simulates a production incident where an agent must gather evidence, classify severity, route ownership, identify root cause, choose mitigation, and close safely.
+RunbookOps is a deterministic OpenEnv-style benchmark for **operational case handling**. Each episode is a realistic service issue that affects customer access, orders, payments, messages, catalog freshness, or partner integrations. The agent must gather evidence, assess severity, route ownership, identify cause, choose a safe resolution, and close the case responsibly.
 
 For fast review:
 
@@ -23,16 +22,29 @@ For fast review:
 
 ## Why Judges Should Care
 
-Most agent benchmarks reward broad reasoning. RunbookOps evaluates operational reliability: can the agent follow a realistic incident workflow under partial information without unsafe shortcuts?
+Most agent benchmarks reward broad reasoning. RunbookOps evaluates whether an agent can handle **real operational work** under partial information without unsafe shortcuts.
 
-- Real-world domain: on-call incident response.
+- Real-world domain: customer-impact service issue handling.
 - Offline and reproducible: no internet or external SaaS dependencies.
 - Deterministic scoring: no LLM-as-judge.
-- Safety-sensitive behavior: premature resolution is penalized.
+- Safety-sensitive behavior: premature closure is penalized.
+
+## Why This Matters
+
+Teams increasingly want agents that can do more than chat: they need agents that can work through messy operational cases, synthesize evidence, avoid shallow guesses, and recommend safe next actions.
+
+RunbookOps is designed around that broader audience:
+
+- account access cases
+- order completion exceptions
+- payment routing and settlement issues
+- message delivery failures
+- catalog freshness and search quality cases
+- integration and configuration regressions
 
 ## Round 1 Alignment
 
-- Real-world utility: incident triage and runbook operations.
+- Real-world utility: evidence-based operational case handling.
 - OpenEnv-like API: typed `Action`, `Observation`, `StepResult`, plus `reset()`, `step()`, `state()`.
 - 3 difficulty tiers with deterministic graders: `easy`, `medium`, `hard`.
 - Dense trajectory reward + independent final rubric score.
@@ -59,15 +71,23 @@ Most agent benchmarks reward broad reasoning. RunbookOps evaluates operational r
 
 ## Task Families
 
-15 total scenarios across three tiers.
+15 total operational cases across three tiers.
 
 | Tier | Count | Typical Steps | Characteristics |
 |---|---:|---:|---|
-| easy | 5 | 4-8 | Single dominant cause, minimal red herrings |
-| medium | 5 | 6-10 | Multiple plausible causes, cross-source synthesis needed |
+| easy | 5 | 4-8 | One dominant cause, low ambiguity, quick evidence synthesis |
+| medium | 5 | 6-10 | Two plausible explanations, cross-source synthesis needed |
 | hard | 5 | 8-12 | Conflicting signals, multiple false leads, shallow closure punished |
 
 Example services covered: `auth`, `checkout`, `payments`, `email`, `search`, `notifications`, `platform`.
+
+Representative case themes:
+
+- account access failures after credential or rollout changes
+- order completion issues during policy or dependency changes
+- payment exceptions caused by routing or experiment leaks
+- message delivery failures with configuration/provider ambiguity
+- catalog freshness cases after propagation or schema issues
 
 ## Action Space
 
@@ -94,13 +114,15 @@ Supported actions:
 
 | Field Group | Description |
 |---|---|
-| Incident context | scenario id, title, difficulty, service, incident summary |
+| Case context | scenario id, title, difficulty, service, case summary |
 | Visible evidence | unlocked alerts/logs/runbooks/timeline notes |
 | Agent working memory | known facts + action history summary |
 | Decision state | selected severity, assigned team, submitted root cause/mitigation |
 | Episode status | steps taken/remaining, done flag, last action result |
 
 Hidden ground truth values are not exposed in observations.
+
+Internal schema note: the environment keeps the action name `inspect_runbook`, but judge-facing documentation treats these snippets as **workflow playbooks** for broader readability.
 
 ## Reward Design (Trajectory Signal)
 
@@ -141,6 +163,8 @@ Implementation note: while rubric components remain intuitive `0.0-1.0` signals,
 
 Scenario: `easy_auth_token_expiry`
 
+Plain-language framing: an account access case opens after a scheduled credential rollover. Customers suddenly cannot sign in, and the agent needs to work through the evidence before closing the case.
+
 1. `inspect_alert` -> `ea1_alert_401_spike`
 2. `inspect_log` -> `ea1_log_jwt_expired`
 3. `inspect_runbook` -> `ea1_runbook_key_rotation`
@@ -151,6 +175,18 @@ Scenario: `easy_auth_token_expiry`
 8. `resolve_incident`
 
 Expected: terminal reason `resolved_safely`, score close to `1.0`.
+
+## What Makes This Realistic
+
+- Evidence appears gradually instead of all at once.
+- Some cases contain misleading but plausible false leads.
+- Correct labels alone are not enough; the agent must gather enough evidence.
+- Safe closure matters: resolving too early is penalized.
+- Final scores are deterministic and reproducible across runs.
+
+## Why This Is Broader Than Infra Ops
+
+Although the evidence includes alerts, logs, and runbooks, the benchmark is not just about infrastructure firefighting. It models the wider workflow that operations, support, platform, and reliability teams handle every day: customer-impact cases that require evidence review, routing, diagnosis, mitigation, and safe closure.
 
 ## API Endpoints
 
@@ -216,6 +252,7 @@ Optional:
 - `OPENAI_API_KEY`
 - `LOCAL_IMAGE_NAME`
 - `RUNBOOKOPS_BASE_URL`
+- `OPENENV_ENV_URL`
 - `MAX_STEPS`, `TEMPERATURE`, `MAX_TOKENS`, `RESULT_PATH`
 
 Run:
@@ -226,7 +263,8 @@ python3 inference.py
 
 Validator-safe behavior:
 
-- If `RUNBOOKOPS_BASE_URL` is unset or unreachable, `inference.py` falls back to the local in-process environment.
+- If `RUNBOOKOPS_BASE_URL` is unset, `OPENENV_ENV_URL` can be used as an optional alias for the environment endpoint.
+- If neither environment URL is set, or the configured endpoint is unreachable, `inference.py` falls back to the local in-process environment.
 - If `HF_TOKEN` or other API credentials are missing, `inference.py` falls back to a deterministic planner-only baseline instead of exiting with a non-zero status.
 - When credentials are present, the script initializes the OpenAI client and records `inference_mode: "openai_client"` in the output JSON.
 - Stdout uses the exact validator-facing bracketed format with `[START]`, `[STEP]`, and `[END]` records on single lines.
@@ -266,6 +304,8 @@ Environment variable expectations:
 - `MODEL_NAME`: required by the hackathon contract, includes a safe default.
 - `HF_TOKEN`: mandatory secret for real LLM-backed runs, with no default.
 - `LOCAL_IMAGE_NAME`: optional and only used if a containerized local model workflow is introduced later.
+- `RUNBOOKOPS_BASE_URL`: optional preferred environment endpoint variable for this project.
+- `OPENENV_ENV_URL`: optional alias for environment endpoint compatibility and convenience.
 
 ## Docker
 
@@ -293,6 +333,7 @@ This repo is tuned to avoid the specific Round 1 failure modes called out in the
 - `inference.py` is at the repository root.
 - `API_BASE_URL` and `MODEL_NAME` are read with defaults.
 - `HF_TOKEN` is read without a default.
+- `OPENENV_ENV_URL` is supported only as an optional alias, not as a required contract variable.
 - All LLM-backed calls go through `from openai import OpenAI`.
 - Stdout is limited to exact `[START]`, `[STEP]`, and `[END]` records.
 - Published task scores are always strictly inside `(0,1)`.

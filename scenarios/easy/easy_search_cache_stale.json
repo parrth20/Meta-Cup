@@ -1,9 +1,9 @@
 {
   "scenario_id": "easy_search_cache_stale",
-  "title": "Search results stale after invalidation pause",
+  "title": "Catalog freshness case after update propagation stalled",
   "difficulty": "easy",
   "service": "search",
-  "incident_summary": "Users report outdated product results; freshness dashboard drift is rising.",
+  "incident_summary": "Customers are seeing outdated listings while freshness drift continues to rise.",
   "alerts": [
     {
       "id": "es1_alert_freshness_lag",

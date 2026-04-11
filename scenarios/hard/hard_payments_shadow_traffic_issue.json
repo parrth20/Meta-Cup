@@ -1,9 +1,9 @@
 {
   "scenario_id": "hard_payments_shadow_traffic_issue",
-  "title": "Payments duplicate authorizations from shadow traffic leak",
+  "title": "Payment duplicate-charge risk from experiment traffic leak",
   "difficulty": "hard",
   "service": "payments",
-  "incident_summary": "Card authorization duplicates and idempotency conflicts surge after an experiment rollout.",
+  "incident_summary": "Authorization duplicates and idempotency conflicts surge after an experiment leaks into the production payment path.",
   "alerts": [
     {
       "id": "hp1_alert_duplicate_auth",

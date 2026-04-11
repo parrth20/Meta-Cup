@@ -1,10 +1,11 @@
 name: runbookops
-display_name: RunbookOps
+display_name: RunbookOps - CaseOps Benchmark
 manifest_version: 1
 version: 0.1.0
 description: >-
-  Deterministic incident triage and runbook-operations environment for
-  evaluating agent behavior in realistic SaaS incident response workflows.
+  Deterministic operational case-handling environment for evaluating agent
+  behavior in realistic customer-impact service exceptions and workflow
+  resolution tasks.
 author: RunbookOps Team
 license: MIT
 contact: help_openenvhackathon@scaler.com
@@ -12,14 +13,15 @@ documentation: README.md
 
 tags:
   - openenv
-  - incident-response
+  - case-ops
   - runbook
+  - customer-operations
   - deterministic
   - evaluation
   - fastapi
 
 metadata:
-  domain: operations
+  domain: operational-case-handling
   offline: true
   deterministic: true
   synthetic_data_only: true
@@ -124,8 +126,8 @@ reward:
   type: dense
   trajectory_signal: true
   notes:
-    - Rewards first-time relevant evidence collection and correct operational decisions.
-    - Penalizes duplicate/irrelevant actions, unsafe early resolution, and inefficient trajectories.
+    - Rewards first-time relevant evidence collection and correct case-handling decisions.
+    - Penalizes duplicate or irrelevant actions, unsafe early closure, and inefficient trajectories.
 
 grading:
   type: deterministic_programmatic
@@ -151,6 +153,7 @@ baseline:
     - OPENAI_API_KEY
     - LOCAL_IMAGE_NAME
     - RUNBOOKOPS_BASE_URL
+    - OPENENV_ENV_URL
     - MAX_STEPS
     - TEMPERATURE
     - MAX_TOKENS
@@ -161,8 +164,8 @@ tasks:
     difficulty: easy
     expected_steps: 5-8
     description: >-
-      Single-primary-cause incidents with limited false leads. Emphasis on
-      basic evidence gathering and correct classification.
+      Single-primary-cause operational cases with limited false leads.
+      Emphasis on basic evidence gathering and correct classification.
     scenarios:
       - easy_auth_token_expiry
       - easy_search_cache_stale
@@ -174,7 +177,7 @@ tasks:
     difficulty: medium
     expected_steps: 7-10
     description: >-
-      Multi-hypothesis incidents where at least one plausible red herring
+      Multi-hypothesis service issues where at least one plausible red herring
       appears. Requires cross-source evidence synthesis before resolution.
     scenarios:
       - medium_checkout_flag_rollout
@@ -187,7 +190,7 @@ tasks:
     difficulty: hard
     expected_steps: 9-12
     description: >-
-      Conflicting-signal incidents with multiple plausible false leads.
+      Conflicting-signal operational cases with multiple plausible false leads.
       Strongly penalizes shallow, premature closure.
     scenarios:
       - hard_email_config_regression

@@ -1,9 +1,9 @@
 {
   "scenario_id": "easy_email_queue_blocked",
-  "title": "Transactional email queue blocked",
+  "title": "Message delivery backlog blocks customer notifications",
   "difficulty": "easy",
   "service": "email",
-  "incident_summary": "Password reset and invoice emails are delayed; queue depth alarm is firing.",
+  "incident_summary": "Password reset and invoice messages are delayed while the delivery queue keeps growing.",
   "alerts": [
     {
       "id": "ee1_alert_queue_depth",
