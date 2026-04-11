@@ -25,6 +25,8 @@ Rubric weights:
 
 Raw rubric totals are clamped to `[0.0, 1.0]`, then the published task score is epsilon-clamped into `(0,1)` so validators that reject exact boundary values still accept the run.
 
+The scorer is deliberately continuous. It does not collapse every correct run into the same published value. Evidence handling and closure behavior contribute meaningful variance across scenarios and trajectories.
+
 ### Text Matching Strategy
 
 Root cause and mitigation checks use deterministic normalization:
@@ -36,6 +38,25 @@ Root cause and mitigation checks use deterministic normalization:
 - bounded sequence/trigram similarity checks
 
 This supports realistic paraphrases while avoiding LLM-as-judge variability.
+
+### Evidence and Closure Signals
+
+The evidence component combines four deterministic signals:
+
+- required evidence coverage
+- relevant evidence discovery
+- inspection precision
+- investigation selectivity
+
+The safe-resolution component combines:
+
+- diagnosis correctness
+- evidence sufficiency
+- safe terminal state
+- non-premature closure
+- step efficiency relative to the scenario budget
+
+This is important for agent evaluation because it means two agents can both be "correct" while still receiving different scores for how they reached resolution.
 
 ## Case Framing
 

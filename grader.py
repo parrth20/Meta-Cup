@@ -154,27 +154,29 @@ def _has_negation_conflict(submitted_tokens: list[str], candidate_tokens: set[st
     return False
 
 
-def text_matches(submitted: str | None, canonical: str, aliases: list[str] | None = None) -> bool:
+def text_similarity_score(submitted: str | None, canonical: str, aliases: list[str] | None = None) -> float:
     normalized_submitted = normalize_text(submitted)
     if not normalized_submitted:
-        return False
+        return 0.0
     submitted_tokens_ordered = _tokenize(submitted)
     submitted_tokens = set(submitted_tokens_ordered)
 
     candidate_texts = [canonical, *(aliases or [])]
     normalized_candidates = [normalize_text(value) for value in candidate_texts if normalize_text(value)]
     if not normalized_candidates:
-        return False
+        return 0.0
 
+    best_score = 0.0
     for candidate in normalized_candidates:
         candidate_tokens = set(candidate.split())
         if _has_negation_conflict(submitted_tokens_ordered, candidate_tokens):
             continue
 
         if normalized_submitted == candidate:
-            return True
+            return 1.0
         if normalized_submitted in candidate or candidate in normalized_submitted:
-            return True
+            best_score = max(best_score, 0.97)
+            continue
 
         if submitted_tokens and candidate_tokens:
             overlap = submitted_tokens & candidate_tokens
@@ -184,68 +186,150 @@ def text_matches(submitted: str | None, canonical: str, aliases: list[str] | Non
                 f1 = 0.0
             else:
                 f1 = 2 * precision * recall / (precision + recall)
-
-            if recall >= 0.8:
-                return True
-            if f1 >= 0.72 and recall >= 0.65:
-                return True
+            best_score = max(best_score, 0.55 * f1 + 0.30 * recall + 0.15 * precision)
 
         overlap_count = len(submitted_tokens & candidate_tokens)
         overlap_gate = overlap_count >= 2 or len(candidate_tokens) <= 2
 
         sequence_ratio = SequenceMatcher(None, normalized_submitted, candidate).ratio()
-        if overlap_gate and sequence_ratio >= 0.86:
-            return True
+        if overlap_gate:
+            best_score = max(best_score, 0.92 * sequence_ratio)
 
         sub_trigrams = _char_trigrams(normalized_submitted)
         cand_trigrams = _char_trigrams(candidate)
         if sub_trigrams and cand_trigrams:
             trigram_overlap = len(sub_trigrams & cand_trigrams) / len(sub_trigrams | cand_trigrams)
-            if overlap_gate and trigram_overlap >= 0.62:
-                return True
+            if overlap_gate:
+                best_score = max(best_score, 0.88 * trigram_overlap)
 
-    return False
+    return clamp01(best_score)
+
+
+def text_matches(submitted: str | None, canonical: str, aliases: list[str] | None = None) -> bool:
+    return text_similarity_score(submitted, canonical, aliases) >= 0.72
+
+
+def severity_similarity(submitted: str | None, truth: str) -> float:
+    if not submitted:
+        return 0.0
+    order = {"SEV-1": 1, "SEV-2": 2, "SEV-3": 3}
+    if submitted == truth:
+        return 1.0
+    if submitted not in order or truth not in order:
+        return 0.0
+    distance = abs(order[submitted] - order[truth])
+    if distance == 1:
+        return 0.35
+    return 0.1
+
+
+def team_similarity(submitted: str | None, truth: str) -> float:
+    if not submitted:
+        return 0.0
+    if submitted == truth:
+        return 1.0
+
+    submitted_tokens = set(submitted.split("-"))
+    truth_tokens = set(truth.split("-"))
+    overlap = len(submitted_tokens & truth_tokens) / max(1, len(truth_tokens))
+    suffix_match = 0.25 if submitted.split("-")[-1] == truth.split("-")[-1] else 0.0
+    return clamp01(max(overlap, suffix_match))
+
+
+def _minimum_viable_steps(scenario: Scenario) -> int:
+    return min(scenario.max_steps, len(scenario.required_evidence_ids) + 5)
+
+
+def _step_efficiency(scenario: Scenario, steps_taken: int) -> float:
+    if steps_taken <= 0:
+        return 0.0
+    minimum = _minimum_viable_steps(scenario)
+    if steps_taken <= minimum:
+        return 1.0
+    slack = max(1, scenario.max_steps - minimum)
+    overage = steps_taken - minimum
+    return clamp01(1.0 - (overage / slack))
 
 
 def grade_episode(scenario: Scenario, state: InternalStateSnapshot) -> GraderResult:
-    severity_component = 1.0 if state.selected_severity == scenario.true_severity.value else 0.0
-    team_component = 1.0 if state.assigned_team == scenario.true_owner_team.value else 0.0
+    severity_component = severity_similarity(state.selected_severity, scenario.true_severity.value)
+    team_component = team_similarity(state.assigned_team, scenario.true_owner_team.value)
 
-    root_cause_component = 1.0 if text_matches(
+    root_cause_component = text_similarity_score(
         state.submitted_root_cause,
         scenario.true_root_cause,
         scenario.true_root_cause_aliases,
-    ) else 0.0
+    )
 
-    mitigation_component = 1.0 if text_matches(
+    mitigation_component = text_similarity_score(
         state.submitted_mitigation,
         scenario.true_mitigation,
         scenario.true_mitigation_aliases,
-    ) else 0.0
+    )
 
     required_ids = set(scenario.required_evidence_ids)
     inspected_ids = set(state.inspected_evidence_ids)
-    if required_ids:
-        evidence_component = len(required_ids & inspected_ids) / len(required_ids)
-    else:
-        evidence_component = 1.0
+    required_coverage = len(required_ids & inspected_ids) / len(required_ids) if required_ids else 1.0
+
+    all_relevant_ids = {
+        item.id
+        for item in scenario.all_evidence
+        if item.relevant
+    }
+    discovered_relevant_ids = set(state.discovered_relevant_evidence_ids)
+    if not discovered_relevant_ids:
+        discovered_relevant_ids = inspected_ids & all_relevant_ids
+
+    relevant_discovery = (
+        len(discovered_relevant_ids & all_relevant_ids) / len(all_relevant_ids)
+        if all_relevant_ids
+        else 1.0
+    )
+    inspection_precision = (
+        len(inspected_ids & all_relevant_ids) / len(inspected_ids)
+        if inspected_ids
+        else 0.0
+    )
+    targeting_quality = (
+        1.0 - (len(inspected_ids) / max(1, len(scenario.all_evidence)))
+        if inspected_ids
+        else 0.0
+    )
+    evidence_component = clamp01(
+        0.45 * required_coverage
+        + 0.25 * relevant_discovery
+        + 0.15 * inspection_precision
+        + 0.15 * targeting_quality
+    )
 
     has_required_fields = all(
         [
-            severity_component == 1.0,
-            team_component == 1.0,
-            root_cause_component == 1.0,
-            mitigation_component == 1.0,
+            severity_component >= 0.99,
+            team_component >= 0.99,
+            root_cause_component >= 0.85,
+            mitigation_component >= 0.85,
         ]
     )
-    enough_evidence = evidence_component >= 0.75
-    safe_resolution_component = 1.0 if (
-        state.done
-        and state.resolution_attempted
-        and not state.premature_resolution
-        and has_required_fields
-        and enough_evidence
-    ) else 0.0
+    enough_evidence = required_coverage >= 0.75
+    efficiency_component = _step_efficiency(scenario, state.steps_taken)
+    resolution_correctness = mean(
+        [
+            severity_component,
+            team_component,
+            root_cause_component,
+            mitigation_component,
+        ]
+    )
+    safe_resolution_component = clamp01(
+        (
+            0.35 * resolution_correctness
+            + 0.25 * required_coverage
+            + 0.20 * (1.0 if state.terminal_reason == "resolved_safely" else 0.0)
+            + 0.10 * (0.0 if state.premature_resolution else 1.0)
+            + 0.10 * efficiency_component
+        )
+        * (1.0 if state.resolution_attempted else 0.35)
+    )
 
     components = {
         "severity": clamp01(severity_component),
@@ -266,6 +350,12 @@ def grade_episode(scenario: Scenario, state: InternalStateSnapshot) -> GraderRes
         f"Mitigation component: {components['mitigation']:.2f}",
         f"Evidence coverage component: {components['evidence_coverage']:.2f}",
         f"Safe resolution component: {components['safe_resolution']:.2f}",
+        f"Required evidence coverage: {required_coverage:.2f}",
+        f"Relevant evidence discovery: {relevant_discovery:.2f}",
+        f"Inspection precision: {inspection_precision:.2f}",
+        f"Targeting quality: {targeting_quality:.2f}",
+        f"Step efficiency: {efficiency_component:.2f}",
+        f"Safe resolution gate: {'passed' if (state.done and state.resolution_attempted and not state.premature_resolution and has_required_fields and enough_evidence) else 'not passed'}",
     ]
 
     return GraderResult(

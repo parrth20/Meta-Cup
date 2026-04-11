@@ -156,6 +156,13 @@ Deterministic rubric in `grader.py`:
 | evidence coverage | 0.10 |
 | safe resolution behavior | 0.05 |
 
+The grader is intentionally **continuous rather than binary**. A fully solved case can still receive slightly different scores depending on:
+
+- how much of the required evidence set was actually covered
+- how much relevant evidence was discovered beyond the minimum
+- whether the investigation stayed selective or wandered into noise
+- whether the final resolution happened with adequate coverage and reasonable step efficiency
+
 Text matching is deterministic (normalization, controlled synonyms, overlap/fuzzy thresholds, negation conflict checks).
 
 Implementation note: while rubric components remain intuitive `0.0-1.0` signals, the final published task score is epsilon-clamped into `(0,1)` to satisfy strict validator parsing rules that reject exact boundary values.
@@ -175,7 +182,7 @@ Plain-language framing: an account access case opens after a scheduled credentia
 7. `submit_mitigation` -> `rotate signing key and restart issuer`
 8. `resolve_incident`
 
-Expected: terminal reason `resolved_safely`, score close to `1.0`.
+Expected: terminal reason `resolved_safely`, with a high but not necessarily identical score across scenarios because evidence selectivity and trajectory quality are part of grading.
 
 ## What Makes This Realistic
 
