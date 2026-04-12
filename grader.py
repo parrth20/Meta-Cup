@@ -348,17 +348,17 @@ def grade_episode(scenario: Scenario, state: InternalStateSnapshot) -> GraderRes
     weighted_score = clamp_open01(clamp01(weighted_score))
 
     details: list[str] = [
-        f"Severity component: {components['severity']:.2f}",
-        f"Owner team component: {components['owner_team']:.2f}",
-        f"Root cause component: {components['root_cause']:.2f}",
-        f"Mitigation component: {components['mitigation']:.2f}",
-        f"Evidence coverage component: {components['evidence_coverage']:.2f}",
-        f"Safe resolution component: {components['safe_resolution']:.2f}",
-        f"Required evidence coverage: {required_coverage:.2f}",
-        f"Relevant evidence discovery: {relevant_discovery:.2f}",
-        f"Inspection precision: {inspection_precision:.2f}",
-        f"Targeting quality: {targeting_quality:.2f}",
-        f"Step efficiency: {efficiency_component:.2f}",
+        f"Severity component: {public_score(components['severity']):.4f}",
+        f"Owner team component: {public_score(components['owner_team']):.4f}",
+        f"Root cause component: {public_score(components['root_cause']):.4f}",
+        f"Mitigation component: {public_score(components['mitigation']):.4f}",
+        f"Evidence coverage component: {public_score(components['evidence_coverage']):.4f}",
+        f"Safe resolution component: {public_score(components['safe_resolution']):.4f}",
+        f"Required evidence coverage: {public_score(required_coverage):.4f}",
+        f"Relevant evidence discovery: {public_score(relevant_discovery):.4f}",
+        f"Inspection precision: {public_score(inspection_precision):.4f}",
+        f"Targeting quality: {public_score(targeting_quality):.4f}",
+        f"Step efficiency: {public_score(efficiency_component):.4f}",
         f"Safe resolution gate: {'passed' if (state.done and state.resolution_attempted and not state.premature_resolution and has_required_fields and enough_evidence) else 'not passed'}",
     ]
 

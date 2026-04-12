@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 
 from fastapi.testclient import TestClient
 
@@ -100,3 +101,11 @@ def test_score_alias_matches_grade_endpoint() -> None:
     assert score_resp.status_code == 200
     assert 0.0 <= grade_resp.json()["score"] <= 1.0
     assert 0.0 <= score_resp.json()["score"] <= 1.0
+
+
+def test_grade_payload_does_not_expose_boundary_like_decimal_strings() -> None:
+    client.post("/reset", json={"scenario_id": "easy_auth_token_expiry"})
+    payload = client.post("/grade").json()
+    rendered = json.dumps(payload)
+
+    assert not re.search(r"(?<![\d.])(0\.0+|1\.0+)(?![\d.])", rendered)
