@@ -203,6 +203,25 @@ def test_written_summary_scores_stay_inside_open_interval() -> None:
         assert 0.0 < float(aggregate["max_score"]) < 1.0
 
 
+
+
+def test_exception_fallback_score_uses_public_safety_band(monkeypatch, tmp_path, capsys) -> None:
+    import inference
+
+    def boom(*args, **kwargs):
+        raise RuntimeError("forced episode failure")
+
+    monkeypatch.setattr(inference, "run_episode", boom)
+    monkeypatch.setattr(inference, "HF_TOKEN", None)
+    monkeypatch.setattr(inference, "RESULT_PATH", str(tmp_path / "baseline_results.json"))
+
+    inference.main()
+
+    completed_stdout = capsys.readouterr().out
+    summary = json.loads((tmp_path / "baseline_results.json").read_text())
+    assert all(float(result["score"]) > 0.005 for result in summary["results"])
+    assert not re.search(r"(?<![\d.])0\.0+(?![\d.])", completed_stdout)
+    assert not re.search(r"(?<![\d.])0\.0+(?![\d.])", (tmp_path / "baseline_results.json").read_text())
 def test_written_summary_contains_only_score_like_numeric_fields() -> None:
     root = Path(__file__).resolve().parents[1]
     env = os.environ.copy()

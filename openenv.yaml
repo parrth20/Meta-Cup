@@ -131,7 +131,7 @@ reward:
 
 grading:
   type: deterministic_programmatic
-  score_range: [0.0001, 0.9999]
+  score_range: [0.0051, 0.9949]
   llm_judging: false
   rubric_weights:
     severity: 0.15

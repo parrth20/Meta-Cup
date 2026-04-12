@@ -23,7 +23,7 @@ Rubric weights:
 - Evidence coverage adequacy: `0.10`
 - Safe resolution behavior: `0.05`
 
-Raw rubric totals are clamped to `[0.0, 1.0]`, then the published task score is epsilon-clamped into `(0,1)` so validators that reject exact boundary values still accept the run.
+Raw rubric totals are clamped to `[0.0, 1.0]`, then every published score-like value is projected into a validator-safe open band inside `(0,1)`. This also avoids accidental `0.00` or `1.00` boundary strings when downstream systems round values aggressively.
 
 The scorer is deliberately continuous. It does not collapse every correct run into the same published value. Evidence handling and closure behavior contribute meaningful variance across scenarios and trajectories.
 

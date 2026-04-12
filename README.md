@@ -165,7 +165,7 @@ The grader is intentionally **continuous rather than binary**. A fully solved ca
 
 Text matching is deterministic (normalization, controlled synonyms, overlap/fuzzy thresholds, negation conflict checks).
 
-Implementation note: while rubric components remain intuitive `0.0-1.0` signals, the final published task score is epsilon-clamped into `(0,1)` to satisfy strict validator parsing rules that reject exact boundary values.
+Implementation note: while rubric components remain intuitive `0.0-1.0` signals internally, every published score-like value is projected into a validator-safe open band inside `(0,1)`. This keeps scores away from exact boundary values even under coarse decimal rounding during automated checks.
 
 ## Sample Episode Walkthrough
 

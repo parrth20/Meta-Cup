@@ -1034,7 +1034,7 @@ def main() -> None:
             result = {
                 "scenario_id": scenario.scenario_id,
                 "difficulty": scenario.difficulty.value,
-                "score": 0.0001,
+                "score": public_score(0.0),
                 "steps_taken": 0,
                 "terminal_reason": "episode_exception",
                 "step_trace": [],
